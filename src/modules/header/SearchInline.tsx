@@ -23,8 +23,8 @@ const TERM_DECORATIONS = {
 };
 
 export type SearchTarget =
-  | { kind: "terminal"; addon: SearchAddon }
-  | { kind: "editor"; handle: EditorPaneHandle }
+  | { kind: "terminal"; addon: SearchAddon; focus: () => void }
+  | { kind: "editor"; handle: EditorPaneHandle; focus: () => void }
   | null;
 
 export type SearchInlineHandle = { focus: () => void };
@@ -42,12 +42,21 @@ export const SearchInline = forwardRef<SearchInlineHandle, Props>(
     // In normal mode the field is always present.
     const [openInCompact, setOpenInCompact] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const pendingFocusRef = useRef(false);
+    const setInputRef = useCallback((el: HTMLInputElement | null) => {
+      inputRef.current = el;
+      if (!el || !pendingFocusRef.current) return;
+      pendingFocusRef.current = false;
+      el.focus();
+    }, []);
 
     const expanded = !compact || openInCompact;
 
     const focus = useCallback(() => {
+      pendingFocusRef.current = true;
       if (compact) setOpenInCompact(true);
-      requestAnimationFrame(() => inputRef.current?.focus());
+      else inputRef.current?.focus();
+      if (inputRef.current) pendingFocusRef.current = false;
     }, [compact]);
 
     useImperativeHandle(ref, () => ({ focus }), [focus]);
@@ -56,6 +65,11 @@ export const SearchInline = forwardRef<SearchInlineHandle, Props>(
       if (!target) return;
       if (target.kind === "terminal") target.addon.clearDecorations();
       else target.handle.clearQuery();
+    }, [target]);
+
+    const restoreTargetFocus = useCallback(() => {
+      if (!target) return;
+      target.focus();
     }, [target]);
 
     // Target switched (terminal ↔ editor) or removed → drop highlights.
@@ -114,7 +128,7 @@ export const SearchInline = forwardRef<SearchInlineHandle, Props>(
                 className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
               />
               <Input
-                ref={inputRef}
+                ref={setInputRef}
                 value={q}
                 placeholder={
                   target?.kind === "editor" ? "Search in file" : "Search"
@@ -138,9 +152,8 @@ export const SearchInline = forwardRef<SearchInlineHandle, Props>(
                     setQ("");
                     if (compact) {
                       setOpenInCompact(false);
-                    } else {
-                      inputRef.current?.blur();
                     }
+                    restoreTargetFocus();
                   }
                 }}
               />
