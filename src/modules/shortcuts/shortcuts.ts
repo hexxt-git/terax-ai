@@ -9,6 +9,7 @@ export type ShortcutId =
   | "tab.prev"
   | "tab.selectByIndex"
   | "search.focus"
+  | "explorer.search"
   | "ai.toggle"
   | "ai.askSelection"
   | "shortcuts.open"
@@ -83,6 +84,13 @@ export const SHORTCUTS: Shortcut[] = [
     keys: [MOD_KEY, "1…9"],
     group: "Tabs",
     match: (e) => isMod(e) && /^[1-9]$/.test(e.key),
+  },
+  {
+    id: "explorer.search",
+    label: "Search files",
+    keys: [MOD_KEY, SHIFT_KEY, "F"],
+    group: "Search",
+    match: (e) => isMod(e) && e.shiftKey && e.key.toLowerCase() === "f",
   },
   {
     id: "search.focus",
